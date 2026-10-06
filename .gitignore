@@ -1,0 +1,78 @@
+# ---------------------------------------------------------------------------
+# Build output
+# ---------------------------------------------------------------------------
+/build/
+/build*/
+/out/
+/bin/
+/Debug/
+/Release/
+/RelWithDebInfo/
+/_deps/
+
+# ---------------------------------------------------------------------------
+# Compiled / generated binaries and objects
+# ---------------------------------------------------------------------------
+*.exe
+*.dll
+*.lib
+*.a
+*.o
+*.obj
+*.pdb
+*.ilk
+*.idb
+*.exp
+*.so
+*.so.*
+*.dylib
+*.map
+*.iobj
+*.ipdb
+*.tlog
+*.lastbuildstate
+
+# ---------------------------------------------------------------------------
+# CMake generated files (any directory; real sources never match these)
+# ---------------------------------------------------------------------------
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+*.cmake
+
+# ---------------------------------------------------------------------------
+# CTest / test artefacts and logs
+# ---------------------------------------------------------------------------
+Testing/
+CTestCostData.txt
+LastTest.log
+*.log
+*.memcheck
+
+# ---------------------------------------------------------------------------
+# IDE / editor
+# ---------------------------------------------------------------------------
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.VC.db
+*.VC.opendb
+.cache/
+DerivedData/
+.swiftpm/
+
+# ---------------------------------------------------------------------------
+# Tooling / packaging
+# ---------------------------------------------------------------------------
+*.tar.gz
+*.zip
+*.7z
+__pycache__/

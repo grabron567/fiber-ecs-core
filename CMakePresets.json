@@ -1,0 +1,132 @@
+{
+  "version": 4,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 24,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "FIBERECS_SANITIZE_ADDRESS": "ON",
+        "FIBERECS_SANITIZE_THREAD": "OFF",
+        "FIBERECS_USE_CATCH2": "ON",
+        "FIBERECS_USE_GTEST": "ON"
+      }
+    },
+    {
+      "name": "ninja",
+      "hidden": true,
+      "generator": "Ninja",
+      "cacheVariables": { "CMAKE_CXX_COMPILER": "g++" }
+    },
+    {
+      "name": "vs2022",
+      "hidden": true,
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64"
+    },
+
+    {
+      "name": "debug",
+      "displayName": "Debug (ASan + UBSan)",
+      "description": "Debug build with AddressSanitizer and UndefinedBehaviorSanitizer",
+      "inherits": ["base", "ninja"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "FIBERECS_SANITIZE_ADDRESS": "ON"
+      }
+    },
+    {
+      "name": "tsan",
+      "displayName": "Debug (ThreadSanitizer)",
+      "description": "Debug build with ThreadSanitizer for data-race detection. Mutually exclusive with ASan.",
+      "inherits": ["base", "ninja"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "FIBERECS_SANITIZE_ADDRESS": "OFF",
+        "FIBERECS_SANITIZE_THREAD": "ON"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release",
+      "description": "Optimised build with no sanitizers",
+      "inherits": ["base", "ninja"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "FIBERECS_SANITIZE_ADDRESS": "OFF"
+      }
+    },
+    {
+      "name": "relwithdebinfo",
+      "displayName": "RelWithDebInfo",
+      "inherits": ["base", "ninja"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "FIBERECS_SANITIZE_ADDRESS": "OFF"
+      }
+    },
+    {
+      "name": "debug-msvc",
+      "displayName": "Debug (MSVC, ASan)",
+      "inherits": ["base", "vs2022"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "FIBERECS_SANITIZE_ADDRESS": "ON"
+      }
+    },
+    {
+      "name": "release-msvc",
+      "displayName": "Release (MSVC)",
+      "inherits": ["base", "vs2022"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "FIBERECS_SANITIZE_ADDRESS": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "debug", "configurePreset": "debug" },
+    { "name": "tsan", "configurePreset": "tsan" },
+    { "name": "release", "configurePreset": "release" },
+    { "name": "relwithdebinfo", "configurePreset": "relwithdebinfo" },
+    { "name": "debug-msvc", "configurePreset": "debug-msvc" },
+    { "name": "release-msvc", "configurePreset": "release-msvc" }
+  ],
+  "testPresets": [
+    {
+      "name": "debug",
+      "configurePreset": "debug",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "tsan",
+      "configurePreset": "tsan",
+      "description": "TSan: asserts zero reported data races",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": true }
+    },
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    },
+    {
+      "name": "debug-msvc",
+      "configurePreset": "debug-msvc",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "release-msvc",
+      "configurePreset": "release-msvc",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}
