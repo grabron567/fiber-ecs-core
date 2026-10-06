@@ -15,7 +15,9 @@
 #endif
 
 #if defined(FIBERECS_BACKEND_OS)
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 #endif
 
@@ -175,22 +177,6 @@ struct FiberContext
 
 namespace
 {
-struct TrampolineArg
-{
-  Fiber* fiber;
-};
-
-thread_local TrampolineArg t_trampoline_arg{};
-
-VOID WINAPI os_trampoline(PVOID param)
-{
-  auto* arg = static_cast<TrampolineArg*>(param);
-  Fiber* self = arg->fiber;
-  self->m_entry();
-  self->m_finished.store(true, std::memory_order_release);
-  return VOID();
-}
-
 // Converts the calling thread to a fiber once; every subsequent switch on this
 // thread requires it.
 FiberContext& root_context()
@@ -209,6 +195,14 @@ FiberContext& root_context()
   return ctx;
 }
 } // namespace
+
+// CreateFiber start routine. The parameter is the Fiber* itself, so create()
+// hands no scratch storage across the (potentially cross-thread) gap between
+// construction and the first resume.
+void __stdcall Fiber::os_trampoline(void* param) noexcept
+{
+  bootstrap(static_cast<Fiber*>(param));
+}
 
 void Fiber::bootstrap(Fiber* self) noexcept
 {
@@ -234,8 +228,7 @@ Fiber* Fiber::create(void* stack, std::size_t stack_size, Entry entry)
 
   root_context(); // the resumer must be a fiber before this fiber can run
 
-  t_trampoline_arg.fiber = fiber;
-  ctx->os_fiber = CreateFiber(stack_size, &os_trampoline, &t_trampoline_arg);
+  ctx->os_fiber = CreateFiber(stack_size, &Fiber::os_trampoline, fiber);
   if (ctx->os_fiber == nullptr)
   {
     std::fprintf(stderr, "[fiberecs] CreateFiber failed (error=%lu)\n", GetLastError());

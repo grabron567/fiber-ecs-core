@@ -37,7 +37,10 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 add_library(fiberecs_warnings INTERFACE)
 if(MSVC)
   target_compile_options(fiberecs_warnings INTERFACE
-    /W4 /WX /permissive- /Zc:__cplusplus /Zc:preprocessor /MP /utf-8)
+    /W4 /WX /permissive- /Zc:__cplusplus /Zc:preprocessor /MP /utf-8
+    # alignas(64) deliberately re-pads the enclosing struct; C4324 only
+    # restates layout the code asked for.
+    /wd4324)
   target_compile_definitions(fiberecs_warnings INTERFACE
     _CRT_SECURE_NO_WARNINGS NOMINMAX WIN32_LEAN_AND_MEAN)
 else()
@@ -50,12 +53,24 @@ else()
 endif()
 
 # ---------------------------------------------------------------------------
-# Sanitizers: Debug enables ASan + UBSan; TSan is a separate opt-in because it
-# cannot be combined with ASan in a single build.
+# Sanitizers: master switch OFF by default; when enabled, ASan + UBSan is the
+# default instrumentation and TSan is a separate opt-in because it cannot be
+# combined with ASan in a single build.
 # ---------------------------------------------------------------------------
+option(FIBERECS_ENABLE_SANITIZERS
+  "Apply sanitizer instrumentation (-fsanitize=address,undefined, or -fsanitize=thread) to validate the lock-free queues and fiber context switch"
+  OFF)
 option(FIBERECS_SANITIZE_ADDRESS "Debug builds use AddressSanitizer + UBSan" ON)
 option(FIBERECS_SANITIZE_THREAD "Debug builds use ThreadSanitizer (mutually exclusive with ASan)" OFF)
 option(FIBERECS_NATIVE_ARCH "Tune for the host CPU (-march=native)" OFF)
+
+# The master switch gates every sanitizer probe and flag below. Shadowing the
+# cache entries in this scope (rather than mutating the cache) keeps a plain
+# configure a plain build while preserving the user's preference for later.
+if(NOT FIBERECS_ENABLE_SANITIZERS)
+  set(FIBERECS_SANITIZE_ADDRESS OFF)
+  set(FIBERECS_SANITIZE_THREAD OFF)
+endif()
 
 # ---------------------------------------------------------------------------
 # Sanitizer availability. Some toolchains ship the compiler driver without the
@@ -67,16 +82,18 @@ unset(FIBERECS_TSAN_AVAILABLE CACHE)
 set(FIBERECS_ASAN_AVAILABLE OFF)
 set(FIBERECS_TSAN_AVAILABLE OFF)
 
-if(MSVC)
-  set(CMAKE_REQUIRED_LINK_OPTIONS "/fsanitize=address")
-  check_cxx_source_compiles("int main(){return 0;}" FIBERECS_ASAN_AVAILABLE)
-  set(CMAKE_REQUIRED_LINK_OPTIONS "")
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-  set(CMAKE_REQUIRED_LINK_OPTIONS "-fsanitize=address,undefined")
-  check_cxx_source_compiles("int main(){return 0;}" FIBERECS_ASAN_AVAILABLE)
-  set(CMAKE_REQUIRED_LINK_OPTIONS "-fsanitize=thread")
-  check_cxx_source_compiles("int main(){return 0;}" FIBERECS_TSAN_AVAILABLE)
-  set(CMAKE_REQUIRED_LINK_OPTIONS "")
+if(FIBERECS_ENABLE_SANITIZERS)
+  if(MSVC)
+    set(CMAKE_REQUIRED_LINK_OPTIONS "/fsanitize=address")
+    check_cxx_source_compiles("int main(){return 0;}" FIBERECS_ASAN_AVAILABLE)
+    set(CMAKE_REQUIRED_LINK_OPTIONS "")
+  elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    set(CMAKE_REQUIRED_LINK_OPTIONS "-fsanitize=address,undefined")
+    check_cxx_source_compiles("int main(){return 0;}" FIBERECS_ASAN_AVAILABLE)
+    set(CMAKE_REQUIRED_LINK_OPTIONS "-fsanitize=thread")
+    check_cxx_source_compiles("int main(){return 0;}" FIBERECS_TSAN_AVAILABLE)
+    set(CMAKE_REQUIRED_LINK_OPTIONS "")
+  endif()
 endif()
 
 add_library(fiberecs_sanitizers INTERFACE)
@@ -155,6 +172,9 @@ add_subdirectory(tests)
 
 message(STATUS "fiberecs ${PROJECT_VERSION}")
 message(STATUS "  build type ......... ${CMAKE_BUILD_TYPE}")
-message(STATUS "  ASan+UBSan ......... ${FIBERECS_SANITIZE_ADDRESS} (runtime available: ${FIBERECS_ASAN_AVAILABLE})")
-message(STATUS "  ThreadSanitizer ... ${FIBERECS_SANITIZE_THREAD} (runtime available: ${FIBERECS_TSAN_AVAILABLE})")
+if(FIBERECS_ENABLE_SANITIZERS)
+  message(STATUS "  sanitizers ......... ON (ASan+UBSan: ${FIBERECS_SANITIZE_ADDRESS}, runtime available: ${FIBERECS_ASAN_AVAILABLE} | TSan: ${FIBERECS_SANITIZE_THREAD}, runtime available: ${FIBERECS_TSAN_AVAILABLE})")
+else()
+  message(STATUS "  sanitizers ......... OFF (enable with -DFIBERECS_ENABLE_SANITIZERS=ON)")
+endif()
 message(STATUS "  warnings ........... -Werror equivalent")

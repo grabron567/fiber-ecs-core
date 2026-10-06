@@ -25,15 +25,21 @@ inline constexpr std::size_t kCacheLineSize = 64;
 }
 
 // Largest power of two <= value (0 when value is 0). Used to size ring buffers
-// so their cursors can be masked instead of divided.
+// so their cursors can be masked instead of divided. Written as a portable
+// constexpr loop: __builtin_clzll does not exist on MSVC, and this only runs
+// when an arena is constructed.
 [[nodiscard]] constexpr std::size_t round_down_pow2(std::size_t value) noexcept
 {
   if (value == 0)
   {
     return 0;
   }
-  const int msb = 63 - __builtin_clzll(static_cast<unsigned long long>(value));
-  return std::size_t{1} << msb;
+  std::size_t result = 1;
+  while ((result << 1) != 0 && (result << 1) <= value)
+  {
+    result <<= 1;
+  }
+  return result;
 }
 
 // Cache-line alignment: every arena slot and every hot scheduler field starts

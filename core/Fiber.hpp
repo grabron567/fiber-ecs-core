@@ -61,6 +61,13 @@ private:
   // Installed as the entry point of a freshly built stack frame.
   static void bootstrap(Fiber* self) noexcept;
 
+#if defined(_MSC_VER) && !defined(__clang__)
+  // Windows Fiber API start routine (see the OS backend in Fiber.cpp). Runs
+  // bootstrap() for the Fiber* passed to CreateFiber. __stdcall matches
+  // LPFIBER_START_ROUTINE; on the supported x86_64 target it is ignored.
+  static void __stdcall os_trampoline(void* param) noexcept;
+#endif
+
   void* m_stack{nullptr};
   std::size_t m_stack_size{0};
   Entry m_entry;
